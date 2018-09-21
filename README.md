@@ -1,6 +1,10 @@
-# gitlab-ci-jira-issue-trigger
+# gitlab-ci-mr-jira-issue-trigger
 
-A GitLab webhook to trigger Jira issue transition
+A GitLab merge request webhook to trigger Jira issue transition.
+
+## What
+
+This is a webhook for connection of GitLab and Jira.
 
 ## Reference
 
