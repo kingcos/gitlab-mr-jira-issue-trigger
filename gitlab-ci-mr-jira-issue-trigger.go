@@ -3,7 +3,10 @@ package main
 import (
 	"flag"
 	"fmt"
+	"io/ioutil"
 	"os"
+
+	"gopkg.in/yaml.v2"
 )
 
 // Config struct for the YAML file.
@@ -45,13 +48,26 @@ type Config struct {
 }
 
 // Print error message, then exit program
-func printErrorThenExit(message string) {
-	if message != "" {
-		fmt.Fprintf(os.Stderr, message+"\n")
-	}
+func printErrorThenExit(err error, message string) {
+	if err != nil {
+		if message != "" {
+			fmt.Fprintf(os.Stderr, fmt.Sprintf(message+": [%v]", err)+"\n")
+		}
 
-	flag.Usage()
-	os.Exit(1)
+		flag.Usage()
+		os.Exit(1)
+	}
+}
+
+// Read config YAML file, then return Config
+func (config *Config) read(file string) *Config {
+	yamlFile, err := ioutil.ReadFile(file)
+	printErrorThenExit(err, "Read YAML file error")
+
+	err = yaml.Unmarshal(yamlFile, config)
+	printErrorThenExit(err, "YAML unmarshal error")
+
+	return config
 }
 
 func main() {
