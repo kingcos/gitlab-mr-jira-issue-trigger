@@ -1,5 +1,11 @@
 package main
 
+import (
+	"flag"
+	"fmt"
+	"os"
+)
+
 // Config struct for the YAML file.
 type Config struct {
 	GitLab struct {
@@ -36,6 +42,16 @@ type Config struct {
 			Message string `yaml:"message"`
 		} `yaml:"locked"`
 	} `yaml:"Trigger"`
+}
+
+// Print error message, then exit program
+func printErrorThenExit(message string) {
+	if message != "" {
+		fmt.Fprintf(os.Stderr, message+"\n")
+	}
+
+	flag.Usage()
+	os.Exit(1)
 }
 
 func main() {
