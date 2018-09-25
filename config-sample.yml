@@ -1,0 +1,26 @@
+GitLab:
+  host: GITLAB_HOST_ADDRESS (REQUIRED)
+  token: GITLAB_PUBLIC_USER_TOKEN (REQUIRED)
+
+Jira:
+  host: JIRA_HOST_ADDRESS (REQUIRED)
+  username: JIRA_PUBLIC_USERNAME (REQUIRED)
+  password: JIRA_PUBLIC_PASSWORD (REQUIRED)
+
+Server:
+  path: WEBHOOK_SERVER_PATH (REQUIRED)
+  port: WEBHOOK_SERVER_PORT (REQUIRED)
+
+Trigger:
+  opened:
+    id: JIRA_TRANSITION_ID
+    message: JIRA_ISSUE_MESSAGE
+  merged:
+    id: JIRA_TRANSITION_ID
+    message: JIRA_ISSUE_MESSAGE
+  closed:
+    id: JIRA_TRANSITION_ID
+    message: JIRA_ISSUE_MESSAGE
+  locked:
+    id: JIRA_TRANSITION_ID
+    message: JIRA_ISSUE_MESSAGE
