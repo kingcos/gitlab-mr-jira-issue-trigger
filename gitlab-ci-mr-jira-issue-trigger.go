@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/base64"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -68,6 +69,13 @@ func (config *Config) read(file string) *Config {
 	printErrorThenExit(err, "YAML unmarshal error")
 
 	return config
+}
+
+// Generate Jira token with username & password by HTTP basic authentication
+func generateJiraToken(username string, password string) string {
+	info := username + ":" + password
+	encodedInfo := base64.StdEncoding.EncodeToString([]byte(info))
+	return "Basic " + encodedInfo
 }
 
 func main() {
