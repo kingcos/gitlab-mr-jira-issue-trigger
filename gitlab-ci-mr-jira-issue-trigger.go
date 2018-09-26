@@ -6,6 +6,7 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"net/http"
 	"os"
 
 	"gopkg.in/yaml.v2"
@@ -117,4 +118,10 @@ func main() {
 	config.read(*configFilePath)
 	config.validate()
 
+	// Start HTTP server to listen GitLab merge request events
+	http.HandleFunc(config.Server.Path, func(writer http.ResponseWriter, request *http.Request) {
+
+	})
+
+	http.ListenAndServe(":"+config.Server.Port, nil)
 }
