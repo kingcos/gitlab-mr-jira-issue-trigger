@@ -72,6 +72,31 @@ func (config *Config) read(file string) *Config {
 	return config
 }
 
+// Validate YAML file configs
+func (config *Config) validate() {
+	var err error
+	switch {
+	case config.GitLab.Host == "":
+		err = errors.New("GitLab host is required")
+	case config.GitLab.Token == "":
+		err = errors.New("GitLab token is required")
+	case config.Jira.Host == "":
+		err = errors.New("Jira host is required")
+	case config.Jira.Username == "":
+		err = errors.New("Jira username is required")
+	case config.Jira.Password == "":
+		err = errors.New("Jira password is required")
+	case config.Server.Port == "":
+		err = errors.New("Server port is required")
+	case config.Server.Path == "":
+		err = errors.New("Server path is required")
+	}
+
+	if err != nil {
+		printErrorThenExit(err, "YAML file configs validate error")
+	}
+}
+
 // Generate Jira token with username & password by HTTP basic authentication
 func generateJiraToken(username string, password string) string {
 	info := username + ":" + password
@@ -81,10 +106,15 @@ func generateJiraToken(username string, password string) string {
 
 func main() {
 	// Read config file path from command line
-	var configFilePath = flag.String("path", "", "Path (e.g. config-sample.yml)")
+	var configFilePath = flag.String("path", "config.yml", "Path (default config.yml)")
 	flag.Parse()
 	if *configFilePath == "" {
 		printErrorThenExit(errors.New("Path is required"), "Nil argument error")
 	}
+
+	// Read & validate config.yml
+	var config Config
+	config.read(*configFilePath)
+	config.validate()
 
 }
