@@ -2,10 +2,12 @@ package main
 
 import (
 	"encoding/base64"
+	"encoding/json"
 	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"net/http"
 	"os"
 
@@ -50,8 +52,8 @@ type Config struct {
 	} `yaml:"Trigger"`
 }
 
-// GitLabResponse struct for GitLab webhook response of merge request events
-type GitLabResponse struct {
+// WebHookRequestBody struct for GitLab webhook response of merge request events
+type WebHookRequestBody struct {
 	ObjectKind string `json:"object_kind"`
 	User       struct {
 		Name string `json:"name"`
@@ -137,7 +139,12 @@ func main() {
 
 	// Start HTTP server to listen GitLab merge request events
 	http.HandleFunc(config.Server.Path, func(writer http.ResponseWriter, request *http.Request) {
-
+		// Serialize webhook request body
+		var requestBody = &WebHookRequestBodyErr{}
+		if err := json.NewDecoder(request.Body).Decode(requestBody); err != nil {
+			log.Printf("Warning: [%v]", err.Error())
+			http.Error(writer, err.Error(), http.StatusBadRequest)
+		}
 	})
 
 	http.ListenAndServe(":"+config.Server.Port, nil)
