@@ -50,6 +50,23 @@ type Config struct {
 	} `yaml:"Trigger"`
 }
 
+// GitLabResponse struct for GitLab webhook response of merge request events
+type GitLabResponse struct {
+	ObjectKind string `json:"object_kind"`
+	User       struct {
+		Name string `json:"name"`
+	} `json:"user"`
+	ObjectAttributes struct {
+		IID         int    `json:"iid"`
+		Title       string `json:"title"`
+		State       string `json:"state"`
+		Description string `json:"description"`
+		Target      struct {
+			WebURL string `json:"web_url"`
+		}
+	} `json:"object_attributes"`
+}
+
 // Print error message, then exit program
 func printErrorThenExit(err error, message string) {
 	if err != nil {
