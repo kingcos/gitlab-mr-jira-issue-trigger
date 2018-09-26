@@ -145,6 +145,11 @@ func main() {
 			log.Printf("Warning: [%v]", err.Error())
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 		}
+
+		// Only deal with merge request events
+		if requestBody.ObjectKind != "merge_request" {
+			return
+		}
 	})
 
 	http.ListenAndServe(":"+config.Server.Port, nil)
