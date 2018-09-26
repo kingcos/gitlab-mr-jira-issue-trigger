@@ -2,6 +2,7 @@ package main
 
 import (
 	"encoding/base64"
+	"errors"
 	"flag"
 	"fmt"
 	"io/ioutil"
@@ -79,5 +80,11 @@ func generateJiraToken(username string, password string) string {
 }
 
 func main() {
+	// Read config file path from command line
+	var configFilePath = flag.String("path", "", "Path (e.g. config-sample.yml)")
+	flag.Parse()
+	if *configFilePath == "" {
+		printErrorThenExit(errors.New("Path is required"), "Nil argument error")
+	}
 
 }
