@@ -140,7 +140,7 @@ func main() {
 	// Start HTTP server to listen GitLab merge request events
 	http.HandleFunc(config.Server.Path, func(writer http.ResponseWriter, request *http.Request) {
 		// Serialize webhook request body
-		var requestBody = &WebHookRequestBodyErr{}
+		var requestBody = &WebHookRequestBody{}
 		if err := json.NewDecoder(request.Body).Decode(requestBody); err != nil {
 			log.Printf("Warning: [%v]", err.Error())
 			http.Error(writer, err.Error(), http.StatusBadRequest)
