@@ -69,6 +69,20 @@ type WebHookRequestBody struct {
 	} `json:"object_attributes"`
 }
 
+// JiraUpdateTransitionModel struct for updating Jira transition
+type JiraUpdateTransitionModel struct {
+	Update struct {
+		Comment struct {
+			Add struct {
+				Body string `json:"body"`
+			} `json:"add"`
+		} `json:"comment"`
+	} `json:"update"`
+	Transition struct {
+		ID string `json:"id"`
+	} `json:"transition"`
+}
+
 // Print error message, then exit program
 func printErrorThenExit(err error, message string) {
 	if err != nil {
@@ -150,6 +164,33 @@ func main() {
 		if requestBody.ObjectKind != "merge_request" {
 			return
 		}
+
+		// Map GitLab merge request state to Jira
+		var comment, id string
+		switch requestBody.ObjectAttributes.State {
+		case "merged":
+			id = config.Trigger.Merged.ID
+			comment = config.Trigger.Merged.Message
+		case "opened":
+			id = config.Trigger.Opened.ID
+			comment = config.Trigger.Opened.Message
+		case "closed":
+			//id = config.Trigger.Closed.ID
+			//comment = config.Trigger.Closed.Message
+			id = config.Trigger.Merged.ID
+			comment = config.Trigger.Merged.Message
+		case "locked":
+			id = config.Trigger.Locked.ID
+			comment = config.Trigger.Locked.Message
+		default:
+			printErrorThenExit(errors.New(requestBody.ObjectAttributes.State), "Not support state error")
+		}
+
+		// Ignore states with empty ID
+		if id == "" {
+			return
+		}
+
 	})
 
 	http.ListenAndServe(":"+config.Server.Port, nil)
