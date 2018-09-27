@@ -6,6 +6,47 @@ A GitLab merge request webhook to trigger Jira issue transition.
 
 This is a webhook for connection of GitLab and Jira.
 
+## How to run?
+
+```shell
+git clone https://github.com/kingcos/gitlab-ci-mr-jira-issue-trigger.git
+cd gitlab-ci-mr-jira-issue-trigger
+go build gitlab-ci-mr-jira-issue-trigger
+./gitlab-ci-mr-jira-issue-trigger --path <CONFIG_YAML_FILE_PATH>
+```
+
+## Config
+
+```yml
+GitLab:
+  host: GITLAB_HOST_ADDRESS (REQUIRED)
+  token: GITLAB_PUBLIC_USER_TOKEN (REQUIRED)
+
+Jira:
+  host: JIRA_HOST_ADDRESS (REQUIRED)
+  username: JIRA_PUBLIC_USERNAME (REQUIRED)
+  password: JIRA_PUBLIC_PASSWORD (REQUIRED)
+
+Server:
+  path: WEBHOOK_SERVER_PATH (REQUIRED)
+  port: WEBHOOK_SERVER_PORT (REQUIRED)
+
+Trigger:
+  regex: REGEX_FOR_MATCH_JIRA_ISSUE_IDS_IN_GITLAB_MERGE_REQUEST_TITLE
+  opened:
+    id: JIRA_TRANSITION_ID
+    message: JIRA_ISSUE_MESSAGE
+  merged:
+    id: JIRA_TRANSITION_ID
+    message: JIRA_ISSUE_MESSAGE
+  closed:
+    id: JIRA_TRANSITION_ID
+    message: JIRA_ISSUE_MESSAGE
+  locked:
+    id: JIRA_TRANSITION_ID
+    message: JIRA_ISSUE_MESSAGE
+```
+
 ## Reference
 
 - [Jira API 7.9.0](https://docs.atlassian.com/software/jira/docs/api/REST/7.9.0)
