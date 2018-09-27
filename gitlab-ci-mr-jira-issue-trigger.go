@@ -38,20 +38,32 @@ type Config struct {
 	Trigger struct {
 		Regex  string `yaml:"regex"`
 		Merged struct {
-			ID      string `yaml:"id"`
-			Message string `yaml:"message"`
+			ID       string `yaml:"id"`
+			Message  string `yaml:"message"`
+			URL      bool   `yaml:"url"`
+			Date     bool   `yaml:"date"`
+			Username bool   `yaml:"username"`
 		} `yaml:"merged"`
 		Opened struct {
-			ID      string `yaml:"id"`
-			Message string `yaml:"message"`
+			ID       string `yaml:"id"`
+			Message  string `yaml:"message"`
+			URL      bool   `yaml:"url"`
+			Date     bool   `yaml:"date"`
+			Username bool   `yaml:"username"`
 		} `yaml:"opened"`
 		Closed struct {
-			ID      string `yaml:"id"`
-			Message string `yaml:"message"`
+			ID       string `yaml:"id"`
+			Message  string `yaml:"message"`
+			URL      bool   `yaml:"url"`
+			Date     bool   `yaml:"date"`
+			Username bool   `yaml:"username"`
 		} `yaml:"closed"`
 		Locked struct {
-			ID      string `yaml:"id"`
-			Message string `yaml:"message"`
+			ID       string `yaml:"id"`
+			Message  string `yaml:"message"`
+			URL      bool   `yaml:"url"`
+			Date     bool   `yaml:"date"`
+			Username bool   `yaml:"username"`
 		} `yaml:"locked"`
 	} `yaml:"Trigger"`
 }
@@ -67,6 +79,7 @@ type WebHookRequestBody struct {
 		Title       string `json:"title"`
 		State       string `json:"state"`
 		Description string `json:"description"`
+		Date        string `json:"created_at"`
 		Target      struct {
 			WebURL string `json:"web_url"`
 		}
@@ -83,11 +96,20 @@ type JiraUpdateTransitionModel struct {
 	} `json:"transition"`
 }
 
-// JiraCommentModel struct JiraUpdateTransitionModel
+// JiraCommentModel struct in JiraUpdateTransitionModel
 type JiraCommentModel struct {
 	Add struct {
 		Body string `json:"body"`
 	} `json:"add"`
+}
+
+// GitLabState struct
+type GitLabState struct {
+	id       string
+	message  string
+	url      bool
+	date     bool
+	username bool
 }
 
 // Print error message, then exit program
@@ -173,35 +195,60 @@ func main() {
 		}
 
 		// Map GitLab merge request state to Jira
-		var comment, id string
+		state := GitLabState{}
 		switch requestBody.ObjectAttributes.State {
 		case "merged":
-			id = config.Trigger.Merged.ID
-			comment = config.Trigger.Merged.Message
+			state.id = config.Trigger.Merged.ID
+			state.message = config.Trigger.Merged.Message
+			state.url = config.Trigger.Merged.URL
+			state.date = config.Trigger.Merged.Date
+			state.username = config.Trigger.Merged.Username
 		case "opened":
-			id = config.Trigger.Opened.ID
-			comment = config.Trigger.Opened.Message
+			state.id = config.Trigger.Opened.ID
+			state.message = config.Trigger.Opened.Message
+			state.url = config.Trigger.Opened.URL
+			state.date = config.Trigger.Opened.Date
+			state.username = config.Trigger.Opened.Username
 		case "closed":
-			//id = config.Trigger.Closed.ID
-			//comment = config.Trigger.Closed.Message
-			id = config.Trigger.Merged.ID
-			comment = config.Trigger.Merged.Message
+			state.id = config.Trigger.Closed.ID
+			state.message = config.Trigger.Closed.Message
+			state.url = config.Trigger.Closed.URL
+			state.date = config.Trigger.Closed.Date
+			state.username = config.Trigger.Closed.Username
 		case "locked":
-			id = config.Trigger.Locked.ID
-			comment = config.Trigger.Locked.Message
+			state.id = config.Trigger.Locked.ID
+			state.message = config.Trigger.Locked.Message
+			state.url = config.Trigger.Locked.URL
+			state.date = config.Trigger.Locked.Date
+			state.username = config.Trigger.Locked.Username
 		default:
 			printErrorThenExit(errors.New(requestBody.ObjectAttributes.State), "Not support state error")
 		}
 
 		// Ignore states with empty ID
-		if id == "" {
+		if state.id == "" {
 			return
 		}
 
 		// Parse struct to JSON
 		var updateModel JiraUpdateTransitionModel
-		updateModel.Transition.ID = id
+		updateModel.Transition.ID = state.id
 		commentModel := JiraCommentModel{}
+		comment := state.message
+
+		if state.url {
+			GitLabIID := fmt.Sprint(requestBody.ObjectAttributes.IID)
+			comment = comment + "\nGitLab URL: " + requestBody.ObjectAttributes.Target.WebURL + "/merge_requests/" + GitLabIID
+		}
+
+		if state.date {
+			comment = comment + "\nAt: " + requestBody.ObjectAttributes.Date
+		}
+
+		if state.username {
+			comment = comment + "\nBy: " + requestBody.User.Name
+		}
+
 		commentModel.Add.Body = comment
 
 		updateModel.Update.Comment = append(updateModel.Update.Comment, commentModel)
