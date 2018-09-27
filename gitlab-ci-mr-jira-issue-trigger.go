@@ -73,14 +73,17 @@ type WebHookRequestBody struct {
 type JiraUpdateTransitionModel struct {
 	Update struct {
 		Comment struct {
-			Add struct {
-				Body string `json:"body"`
-			} `json:"add"`
+			Add []JiraCommentAddModel `json:"add"`
 		} `json:"comment"`
 	} `json:"update"`
 	Transition struct {
 		ID string `json:"id"`
 	} `json:"transition"`
+}
+
+// JiraCommentAddModel struct JiraUpdateTransitionModel
+type JiraCommentAddModel struct {
+	Body string `json:"body"`
 }
 
 // Print error message, then exit program
@@ -190,6 +193,17 @@ func main() {
 		if id == "" {
 			return
 		}
+
+		// Parse struct to JSON
+		var updateModel JiraUpdateTransitionModel
+		updateModel.Transition.ID = id
+		commentAdd := JiraCommentAddModel{Body: comment}
+		updateModel.Update.Comment.Add = append(updateModel.Update.Comment.Add, commentAdd)
+
+		updateJSON, err := json.Marshal(updateModel)
+		printErrorThenExit(err, "")
+
+		fmt.Println(string(updateJSON))
 
 	})
 
