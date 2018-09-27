@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"encoding/base64"
 	"encoding/json"
 	"errors"
@@ -10,6 +11,8 @@ import (
 	"log"
 	"net/http"
 	"os"
+	"regexp"
+	"strings"
 
 	"gopkg.in/yaml.v2"
 )
@@ -33,6 +36,7 @@ type Config struct {
 	} `yaml:"Server"`
 
 	Trigger struct {
+		Regex  string `yaml:"regex"`
 		Merged struct {
 			ID      string `yaml:"id"`
 			Message string `yaml:"message"`
@@ -72,18 +76,18 @@ type WebHookRequestBody struct {
 // JiraUpdateTransitionModel struct for updating Jira transition
 type JiraUpdateTransitionModel struct {
 	Update struct {
-		Comment struct {
-			Add []JiraCommentAddModel `json:"add"`
-		} `json:"comment"`
+		Comment []JiraCommentModel `json:"comment"`
 	} `json:"update"`
 	Transition struct {
 		ID string `json:"id"`
 	} `json:"transition"`
 }
 
-// JiraCommentAddModel struct JiraUpdateTransitionModel
-type JiraCommentAddModel struct {
-	Body string `json:"body"`
+// JiraCommentModel struct JiraUpdateTransitionModel
+type JiraCommentModel struct {
+	Add struct {
+		Body string `json:"body"`
+	} `json:"add"`
 }
 
 // Print error message, then exit program
@@ -197,14 +201,55 @@ func main() {
 		// Parse struct to JSON
 		var updateModel JiraUpdateTransitionModel
 		updateModel.Transition.ID = id
-		commentAdd := JiraCommentAddModel{Body: comment}
-		updateModel.Update.Comment.Add = append(updateModel.Update.Comment.Add, commentAdd)
+		commentModel := JiraCommentModel{}
+		commentModel.Add.Body = comment
+
+		updateModel.Update.Comment = append(updateModel.Update.Comment, commentModel)
 
 		updateJSON, err := json.Marshal(updateModel)
 		printErrorThenExit(err, "")
 
 		fmt.Println(string(updateJSON))
 
+		// Match Jira issue IDs
+		mergeRequestTitle := requestBody.ObjectAttributes.Title
+		regex, err := regexp.Compile(config.Trigger.Regex)
+		matched := regex.FindStringSubmatch(mergeRequestTitle)
+		if len(matched) != 2 {
+			return
+		}
+		issueIDs := strings.Split(matched[1], " ")
+
+		for _, issueID := range issueIDs {
+			// Construct API URL & request
+			updateTransitionAPI := config.Jira.Host + "/rest/api/2/issue/" + issueID + "/transitions"
+
+			request, _ := http.NewRequest("POST", updateTransitionAPI, bytes.NewBuffer(updateJSON))
+			request.Header.Set("Authorization", generateJiraToken(config.Jira.Username, config.Jira.Password))
+			request.Header.Set("Content-Type", "application/json")
+
+			if err != nil {
+				return
+			}
+
+			client := &http.Client{}
+			response, err := client.Do(request)
+			if err != nil {
+				return
+			}
+
+			defer response.Body.Close()
+
+			// Print info when success or failure
+			if response.StatusCode == 204 {
+				fmt.Println(issueID + ": Jira transition updated successfully.")
+			} else {
+				fmt.Println(issueID + ": Jira transition updated failed:")
+				fmt.Println("Response Status Code:", response.StatusCode)
+				body, _ := ioutil.ReadAll(response.Body)
+				fmt.Println("Response Body:", string(body))
+			}
+		}
 	})
 
 	http.ListenAndServe(":"+config.Server.Port, nil)
