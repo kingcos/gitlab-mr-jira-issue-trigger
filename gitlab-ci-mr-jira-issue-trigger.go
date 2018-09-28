@@ -12,12 +12,13 @@ import (
 	"net/http"
 	"os"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"gopkg.in/yaml.v2"
 )
 
-// Config struct for the YAML file.
+// Config struct for the YAML file
 type Config struct {
 	GitLab struct {
 		Host  string `yaml:"host"`
@@ -38,32 +39,36 @@ type Config struct {
 	Trigger struct {
 		Regex  string `yaml:"regex"`
 		Merged struct {
-			ID       string `yaml:"id"`
+			Title    string `yaml:"title"`
 			Message  string `yaml:"message"`
 			URL      bool   `yaml:"url"`
 			Date     bool   `yaml:"date"`
 			Username bool   `yaml:"username"`
+			Label    string `yaml:"label"`
 		} `yaml:"merged"`
 		Opened struct {
-			ID       string `yaml:"id"`
+			Title    string `yaml:"title"`
 			Message  string `yaml:"message"`
 			URL      bool   `yaml:"url"`
 			Date     bool   `yaml:"date"`
 			Username bool   `yaml:"username"`
+			Label    string `yaml:"label"`
 		} `yaml:"opened"`
 		Closed struct {
-			ID       string `yaml:"id"`
+			Title    string `yaml:"title"`
 			Message  string `yaml:"message"`
 			URL      bool   `yaml:"url"`
 			Date     bool   `yaml:"date"`
 			Username bool   `yaml:"username"`
+			Label    string `yaml:"label"`
 		} `yaml:"closed"`
 		Locked struct {
-			ID       string `yaml:"id"`
+			Title    string `yaml:"title"`
 			Message  string `yaml:"message"`
 			URL      bool   `yaml:"url"`
 			Date     bool   `yaml:"date"`
 			Username bool   `yaml:"username"`
+			Label    string `yaml:"label"`
 		} `yaml:"locked"`
 	} `yaml:"Trigger"`
 }
@@ -86,30 +91,14 @@ type WebHookRequestBody struct {
 	} `json:"object_attributes"`
 }
 
-// JiraUpdateTransitionModel struct for updating Jira transition
-type JiraUpdateTransitionModel struct {
-	Update struct {
-		Comment []JiraCommentModel `json:"comment"`
-	} `json:"update"`
-	Transition struct {
-		ID string `json:"id"`
-	} `json:"transition"`
-}
-
-// JiraCommentModel struct in JiraUpdateTransitionModel
-type JiraCommentModel struct {
-	Add struct {
-		Body string `json:"body"`
-	} `json:"add"`
-}
-
 // GitLabState struct
 type GitLabState struct {
-	id       string
+	title    string
 	message  string
 	url      bool
 	date     bool
 	username bool
+	labels   []string
 }
 
 // Print error message, then exit program
@@ -167,6 +156,129 @@ func generateJiraToken(username string, password string) string {
 	return "Basic " + encodedInfo
 }
 
+// Update Jira issue's transition with host, token, issue ID & transition ID
+func updateJiraTransition(host string, issueID string, transitionID int, token string) error {
+	// JiraTransitionModel struct for Jira transition
+	type JiraTransitionModel struct {
+		Transition struct {
+			ID int `json:"id"`
+		} `json:"transition"`
+	}
+
+	model := JiraTransitionModel{}
+	model.Transition.ID = transitionID
+	requestJSON, _ := json.Marshal(model)
+
+	apiURL := host + "/rest/api/2/issue/" + issueID + "/transitions"
+
+	request, _ := http.NewRequest("POST", apiURL, bytes.NewBuffer(requestJSON))
+	request.Header.Set("Authorization", token)
+	request.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+
+	defer response.Body.Close()
+
+	// Print info when success or failure
+	if response.StatusCode == 204 {
+		fmt.Println(issueID + ": Jira transition updated successfully.")
+	} else {
+		body, _ := ioutil.ReadAll(response.Body)
+		return errors.New(string(body))
+	}
+
+	return nil
+}
+
+// Add Jira issue's comment with host, token, issue ID & comment
+func addJiraComment(host string, issueID string, comment string, token string) error {
+	// JiraCommentModel struct for Jira comment
+	type JiraCommentModel struct {
+		Body string `json:"body"`
+	}
+
+	model := JiraCommentModel{}
+	model.Body = comment
+	requestJSON, _ := json.Marshal(model)
+
+	apiURL := host + "/rest/api/2/issue/" + issueID + "/comment"
+
+	request, _ := http.NewRequest("POST", apiURL, bytes.NewBuffer(requestJSON))
+	request.Header.Set("Authorization", token)
+	request.Header.Set("Content-Type", "application/json")
+
+	client := &http.Client{}
+	response, err := client.Do(request)
+	if err != nil {
+		return err
+	}
+
+	defer response.Body.Close()
+
+	// Print info when success or failure
+	if response.StatusCode == 201 {
+		fmt.Println(issueID + ": Jira comment added successfully.")
+	} else {
+		body, _ := ioutil.ReadAll(response.Body)
+		return errors.New(string(body))
+	}
+
+	return nil
+}
+
+// Find Jira transition ID by transition title in the page
+func findJiraTransitionIDByTitle(host string, issueID string, title string, token string) (int, error) {
+	// JiraTransitionModel struct for Jira transition
+	type JiraTransitionModel struct {
+		ID   string `json:"id"`
+		Name string `json:"name"`
+	}
+
+	// JiraTransitionsModel struct for Jira transitions
+	type JiraTransitionsModel struct {
+		Transitions []JiraTransitionModel `json:"transitions"`
+	}
+
+	apiURL := host + "/rest/api/2/issue/" + issueID + "/transitions"
+
+	request, _ := http.NewRequest("GET", apiURL, nil)
+	request.Header.Set("Authorization", token)
+
+	client := &http.Client{}
+	response, err := client.Do(request)
+	if err != nil {
+		return 0, err
+	}
+
+	defer response.Body.Close()
+
+	// Print info when success or failure
+	if response.StatusCode == 200 {
+		fmt.Println(issueID + ": Jira transition updated successfully.")
+		body, _ := ioutil.ReadAll(response.Body)
+		var model JiraTransitionsModel
+
+		json.Unmarshal(body, &model)
+
+		for _, transition := range model.Transitions {
+			if transition.Name == title {
+				id, _ := strconv.Atoi(transition.ID)
+				return id, nil
+			}
+		}
+
+	} else {
+		body, _ := ioutil.ReadAll(response.Body)
+		return 0, errors.New(string(body))
+	}
+
+	return 0, nil
+}
+
 func main() {
 	// Read config file path from command line
 	var configFilePath = flag.String("path", "config.yml", "Path (default config.yml)")
@@ -198,25 +310,30 @@ func main() {
 		state := GitLabState{}
 		switch requestBody.ObjectAttributes.State {
 		case "merged":
-			state.id = config.Trigger.Merged.ID
+			state.title = config.Trigger.Merged.Title
 			state.message = config.Trigger.Merged.Message
 			state.url = config.Trigger.Merged.URL
 			state.date = config.Trigger.Merged.Date
 			state.username = config.Trigger.Merged.Username
 		case "opened":
-			state.id = config.Trigger.Opened.ID
+			state.title = config.Trigger.Opened.Title
 			state.message = config.Trigger.Opened.Message
 			state.url = config.Trigger.Opened.URL
 			state.date = config.Trigger.Opened.Date
 			state.username = config.Trigger.Opened.Username
 		case "closed":
-			state.id = config.Trigger.Closed.ID
-			state.message = config.Trigger.Closed.Message
-			state.url = config.Trigger.Closed.URL
-			state.date = config.Trigger.Closed.Date
-			state.username = config.Trigger.Closed.Username
+			// state.title = config.Trigger.Closed.Title
+			// state.message = config.Trigger.Closed.Message
+			// state.url = config.Trigger.Closed.URL
+			// state.date = config.Trigger.Closed.Date
+			// state.username = config.Trigger.Closed.Username
+			state.title = config.Trigger.Merged.Title
+			state.message = config.Trigger.Merged.Message
+			state.url = config.Trigger.Merged.URL
+			state.date = config.Trigger.Merged.Date
+			state.username = config.Trigger.Merged.Username
 		case "locked":
-			state.id = config.Trigger.Locked.ID
+			state.title = config.Trigger.Locked.Title
 			state.message = config.Trigger.Locked.Message
 			state.url = config.Trigger.Locked.URL
 			state.date = config.Trigger.Locked.Date
@@ -225,15 +342,7 @@ func main() {
 			printErrorThenExit(errors.New(requestBody.ObjectAttributes.State), "Not support state error")
 		}
 
-		// Ignore states with empty ID
-		if state.id == "" {
-			return
-		}
-
 		// Parse struct to JSON
-		var updateModel JiraUpdateTransitionModel
-		updateModel.Transition.ID = state.id
-		commentModel := JiraCommentModel{}
 		comment := state.message
 
 		if state.url {
@@ -249,53 +358,27 @@ func main() {
 			comment = comment + "\nBy: " + requestBody.User.Name
 		}
 
-		commentModel.Add.Body = comment
-
-		updateModel.Update.Comment = append(updateModel.Update.Comment, commentModel)
-
-		updateJSON, err := json.Marshal(updateModel)
-		printErrorThenExit(err, "")
-
-		fmt.Println(string(updateJSON))
+		fmt.Println(comment)
 
 		// Match Jira issue IDs
 		mergeRequestTitle := requestBody.ObjectAttributes.Title
-		regex, err := regexp.Compile(config.Trigger.Regex)
+		regex, _ := regexp.Compile(config.Trigger.Regex)
 		matched := regex.FindStringSubmatch(mergeRequestTitle)
 		if len(matched) != 2 {
 			return
 		}
 		issueIDs := strings.Split(matched[1], " ")
 
+		host := config.Jira.Host
+		token := generateJiraToken(config.Jira.Username, config.Jira.Password)
+
 		for _, issueID := range issueIDs {
-			// Construct API URL & request
-			updateTransitionAPI := config.Jira.Host + "/rest/api/2/issue/" + issueID + "/transitions"
-
-			request, _ := http.NewRequest("POST", updateTransitionAPI, bytes.NewBuffer(updateJSON))
-			request.Header.Set("Authorization", generateJiraToken(config.Jira.Username, config.Jira.Password))
-			request.Header.Set("Content-Type", "application/json")
-
-			if err != nil {
-				return
-			}
-
-			client := &http.Client{}
-			response, err := client.Do(request)
-			if err != nil {
-				return
-			}
-
-			defer response.Body.Close()
-
-			// Print info when success or failure
-			if response.StatusCode == 204 {
-				fmt.Println(issueID + ": Jira transition updated successfully.")
-			} else {
-				fmt.Println(issueID + ": Jira transition updated failed:")
-				fmt.Println("Response Status Code:", response.StatusCode)
-				body, _ := ioutil.ReadAll(response.Body)
-				fmt.Println("Response Body:", string(body))
-			}
+			// Find Jira transition ID
+			id, _ := findJiraTransitionIDByTitle(host, issueID, state.title, token)
+			// Add Jira comment
+			addJiraComment(host, issueID, comment, token)
+			// Update Jira transition
+			updateJiraTransition(host, issueID, id, token)
 		}
 	})
 
