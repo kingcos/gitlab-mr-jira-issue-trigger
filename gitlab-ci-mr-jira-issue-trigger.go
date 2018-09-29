@@ -10,6 +10,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"net/url"
 	"os"
 	"regexp"
 	"strconv"
@@ -80,12 +81,13 @@ type WebHookRequestBody struct {
 		Name string `json:"name"`
 	} `json:"user"`
 	ObjectAttributes struct {
-		IID         int    `json:"iid"`
-		Title       string `json:"title"`
-		State       string `json:"state"`
-		Description string `json:"description"`
-		Date        string `json:"created_at"`
-		Target      struct {
+		IID             int    `json:"iid"`
+		Title           string `json:"title"`
+		State           string `json:"state"`
+		Description     string `json:"description"`
+		Date            string `json:"created_at"`
+		TargetProjectID int    `json:"target_project_id"`
+		Target          struct {
 			WebURL string `json:"web_url"`
 		}
 	} `json:"object_attributes"`
@@ -214,7 +216,7 @@ func addJiraComment(host string, issueID string, comment string, token string) e
 	client := &http.Client{}
 	response, err := client.Do(request)
 	if err != nil {
-		return err
+		return errors.New(err.Error())
 	}
 
 	defer response.Body.Close()
@@ -258,7 +260,6 @@ func findJiraTransitionIDByTitle(host string, issueID string, title string, toke
 
 	// Print info when success or failure
 	if response.StatusCode == 200 {
-		fmt.Println(issueID + ": Jira transition updated successfully.")
 		body, _ := ioutil.ReadAll(response.Body)
 		var model JiraTransitionsModel
 
@@ -266,11 +267,40 @@ func findJiraTransitionIDByTitle(host string, issueID string, title string, toke
 
 		for _, transition := range model.Transitions {
 			if transition.Name == title {
+				fmt.Println(issueID + ": Find Jira transition ID successfully: " + transition.ID)
 				id, _ := strconv.Atoi(transition.ID)
+
 				return id, nil
 			}
 		}
 
+	} else {
+		body, _ := ioutil.ReadAll(response.Body)
+		return 0, errors.New(string(body))
+	}
+
+	return 0, nil
+}
+
+// Add GitLab comment
+func addGitLabComment(host string, projectID string, mergeRequestID string, comment string, token string) (int, error) {
+	apiURL := host + "/api/v4/projects/" + projectID + "/merge_requests/" + mergeRequestID + "/notes"
+	form := url.Values{}
+	form.Add("body", comment)
+	request, _ := http.NewRequest("POST", apiURL, strings.NewReader(form.Encode()))
+	request.Header.Set("Private-Token", token)
+
+	client := &http.Client{}
+	response, err := client.Do(request)
+	if err != nil {
+		return 0, err
+	}
+
+	defer response.Body.Close()
+
+	// Print info when success or failure
+	if response.StatusCode == 201 {
+		fmt.Println(projectID + " " + mergeRequestID + ": GitLab comment added successfully.")
 	} else {
 		body, _ := ioutil.ReadAll(response.Body)
 		return 0, errors.New(string(body))
@@ -294,6 +324,7 @@ func main() {
 
 	// Start HTTP server to listen GitLab merge request events
 	http.HandleFunc(config.Server.Path, func(writer http.ResponseWriter, request *http.Request) {
+		fmt.Println("----------")
 		// Serialize webhook request body
 		var requestBody = &WebHookRequestBody{}
 		if err := json.NewDecoder(request.Body).Decode(requestBody); err != nil {
@@ -322,16 +353,11 @@ func main() {
 			state.date = config.Trigger.Opened.Date
 			state.username = config.Trigger.Opened.Username
 		case "closed":
-			// state.title = config.Trigger.Closed.Title
-			// state.message = config.Trigger.Closed.Message
-			// state.url = config.Trigger.Closed.URL
-			// state.date = config.Trigger.Closed.Date
-			// state.username = config.Trigger.Closed.Username
-			state.title = config.Trigger.Merged.Title
-			state.message = config.Trigger.Merged.Message
-			state.url = config.Trigger.Merged.URL
-			state.date = config.Trigger.Merged.Date
-			state.username = config.Trigger.Merged.Username
+			state.title = config.Trigger.Closed.Title
+			state.message = config.Trigger.Closed.Message
+			state.url = config.Trigger.Closed.URL
+			state.date = config.Trigger.Closed.Date
+			state.username = config.Trigger.Closed.Username
 		case "locked":
 			state.title = config.Trigger.Locked.Title
 			state.message = config.Trigger.Locked.Message
@@ -377,8 +403,12 @@ func main() {
 			id, _ := findJiraTransitionIDByTitle(host, issueID, state.title, token)
 			// Add Jira comment
 			addJiraComment(host, issueID, comment, token)
+
 			// Update Jira transition
-			updateJiraTransition(host, issueID, id, token)
+			if err := updateJiraTransition(host, issueID, id, token); err != nil {
+				notes := fmt.Sprintf("gitlab-ci-mr-jira-issue-trigger ERROR: [%v]", err) + "\n"
+				addGitLabComment(config.GitLab.Host, fmt.Sprint(requestBody.ObjectAttributes.TargetProjectID), fmt.Sprint(requestBody.ObjectAttributes.IID), notes, config.GitLab.Token)
+			}
 		}
 	})
 
