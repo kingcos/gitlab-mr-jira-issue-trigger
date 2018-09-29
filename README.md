@@ -63,3 +63,4 @@ Trigger:
 
 - [Jira API 7.9.0](https://docs.atlassian.com/software/jira/docs/api/REST/7.9.0)
 - [GitLab WebHook API - Merge Request Events](https://docs.gitlab.com/ee/user/project/integrations/webhooks.html#merge-request-events)
+- [GitLab Notes API - Create new merge request note](https://docs.gitlab.com/ee/api/notes.html#create-new-merge-request-note)
