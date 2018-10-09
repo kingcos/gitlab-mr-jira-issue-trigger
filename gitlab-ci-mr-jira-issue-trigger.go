@@ -324,7 +324,7 @@ func main() {
 
 	// Start HTTP server to listen GitLab merge request events
 	http.HandleFunc(config.Server.Path, func(writer http.ResponseWriter, request *http.Request) {
-		fmt.Println("----------")
+		fmt.Println("--- New Request Handling ---")
 		// Serialize webhook request body
 		var requestBody = &WebHookRequestBody{}
 		if err := json.NewDecoder(request.Body).Decode(requestBody); err != nil {
@@ -389,11 +389,12 @@ func main() {
 		// Match Jira issue IDs
 		mergeRequestTitle := requestBody.ObjectAttributes.Title
 		regex, _ := regexp.Compile(config.Trigger.Regex)
-		matched := regex.FindStringSubmatch(mergeRequestTitle)
-		if len(matched) != 2 {
-			return
+		issueIDs := regex.FindAllString(mergeRequestTitle, -1)
+
+		if len(issueIDs) == 0 {
+			notes := "gitlab-ci-mr-jira-issue-trigger ERROR: Couldn't find these IDs in Jira. Please check it again!"
+			addGitLabComment(config.GitLab.Host, fmt.Sprint(requestBody.ObjectAttributes.TargetProjectID), fmt.Sprint(requestBody.ObjectAttributes.IID), notes, config.GitLab.Token)
 		}
-		issueIDs := strings.Split(matched[1], " ")
 
 		host := config.Jira.Host
 		token := generateJiraToken(config.Jira.Username, config.Jira.Password)
@@ -406,6 +407,7 @@ func main() {
 
 			// Update Jira transition
 			if err := updateJiraTransition(host, issueID, id, token); err != nil {
+				// Add GitLab comment if error occurs
 				notes := fmt.Sprintf("gitlab-ci-mr-jira-issue-trigger ERROR: [%v]", err) + "\n"
 				addGitLabComment(config.GitLab.Host, fmt.Sprint(requestBody.ObjectAttributes.TargetProjectID), fmt.Sprint(requestBody.ObjectAttributes.IID), notes, config.GitLab.Token)
 			}
