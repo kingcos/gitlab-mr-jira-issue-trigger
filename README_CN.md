@@ -1,18 +1,18 @@
 # gitlab-ci-mr-jira-issue-trigger
 
-English | [中文](README_CN.md)
+[English](README.md) | 中文
 
-A GitLab merge request webhook to trigger Jira issue transition.
+GitLab 代码合并请求（Merge Request）触发 Jira 问题流程更新的 Webhook。
 
-## What
+## 简介
 
-This is a webhook for connection of GitLab and Jira.
+这是一个 GitLab webhook，连接 GitLab 与 Jira。
 
-> Inspired by [shyiko/gitlab-ci-build-on-merge-request](https://github.com/shyiko/gitlab-ci-build-on-merge-request).
+> 启发自 [shyiko/gitlab-ci-build-on-merge-request](https://github.com/shyiko/gitlab-ci-build-on-merge-request)。
 
-## How to run?
+## 运行
 
-- Setup the server:
+- 设置 Go 服务端：
 
 ```shell
 git clone https://github.com/kingcos/gitlab-ci-mr-jira-issue-trigger.git
@@ -21,15 +21,15 @@ go build gitlab-ci-mr-jira-issue-trigger
 ./gitlab-ci-mr-jira-issue-trigger --path <CONFIG_YAML_FILE_PATH(Default is `config.yml`)>
 ```
 
-- Add server IP with port & path which you setup in config.yml in the GitLab - Settings - Integrations page:
+- 在 GitLab - Settings - Integrations 页面添加服务器 IP 以及在配置文件中设置的端口和路径：
 
 ![GitLab - Settings - Integrations](GitLab-Settings.png)
 
-- Click 'Add webhook' button
-- You can test it with 'Merge requests events'
-- Then enjoy it!
+- 点击 'Add webhook' 按钮
+- 可以选择 'Merge requests events' 简单测试 Webhook 服务的可用性
+- 尽情享用吧！
 
-## Config
+## 配置
 
 ```yml
 GitLab:
@@ -73,13 +73,13 @@ Trigger:
     username: SHOULD_INCLUDED_GITLAB_MERGEREQUEST_USERNAME
 ```
 
-## Issues
+## 问题
 
-- If you find bugs, please **issue** me
-- If you want to contribute, please **pull request**
-- If you like it, just **star** it
+- 如果你发现的 Bug，欢迎提出 **issue**
+- 如果你想贡献代码，欢迎 **pull request**
+- 如果你喜欢这个项目，欢迎 **star**
 
-## Reference
+## 参考
 
 - [Jira API 7.9.0](https://docs.atlassian.com/software/jira/docs/api/REST/7.9.0)
 - [GitLab WebHook API - Merge Request Events](https://docs.gitlab.com/ee/user/project/integrations/webhooks.html#merge-request-events)
