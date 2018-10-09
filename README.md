@@ -77,7 +77,7 @@ Trigger:
 
 - If you find bugs, please **issue** me
 - If you want to contribute, please **pull request**
-- If you like it, just **star** it
+- If you like it, just **star** 🌟 it
 
 ## Reference
 
