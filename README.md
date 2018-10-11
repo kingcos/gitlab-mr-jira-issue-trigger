@@ -29,6 +29,16 @@ go build gitlab-ci-mr-jira-issue-trigger
 - You can test it with 'Merge requests events'
 - Then enjoy it!
 
+### Docker
+
+```sh
+docker pull kingcos/gitlab-ci-mr-jira-issue-trigger:0.1.0
+
+docker run -it --rm --name gitlab-ci-mr-jira-issue-trigger \
+  kingcos/gitlab-ci-mr-jira-issue-trigger:0.1.0 \
+  gitlab-ci-build-on-merge-request --path <CONFIG_YAML_FILE_PATH(Default is `config.yml`)>
+```
+
 ## Config
 
 ```yml
