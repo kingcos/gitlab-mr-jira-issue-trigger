@@ -414,5 +414,6 @@ func main() {
 		}
 	})
 
+	fmt.Println("--- gitlab-ci-mr-jira-issue-trigger is running ---")
 	http.ListenAndServe(":"+config.Server.Port, nil)
 }
