@@ -19,6 +19,7 @@ GitLab 代码合并请求（Merge Request）触发 Jira 问题流程更新的 We
 ```shell
 git clone https://github.com/kingcos/gitlab-mr-jira-issue-trigger.git
 cd gitlab-mr-jira-issue-trigger
+
 go build gitlab-mr-jira-issue-trigger
 ./gitlab-mr-jira-issue-trigger --path <CONFIG_YAML_FILE_PATH(Default is `config.yml`)>
 ```
@@ -29,8 +30,8 @@ go build gitlab-mr-jira-issue-trigger
 docker pull kingcos/gitlab-mr-jira-issue-trigger:0.1.0
 
 docker run -it --rm --name gitlab-mr-jira-issue-trigger \
-  kingcos/gitlab-mr-jira-issue-trigger:0.1.0 \
-  gitlab-mr-jira-issue-trigger --path <CONFIG_YAML_FILE_PATH(Default is `config.yml`)>
+    kingcos/gitlab-mr-jira-issue-trigger:0.1.0 \
+    gitlab-mr-jira-issue-trigger --path <CONFIG_YAML_FILE_PATH(Default is `config.yml`)>
 ```
 
 ### 设置 GitLab Webhook
