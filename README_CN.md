@@ -24,16 +24,6 @@ go build gitlab-mr-jira-issue-trigger
 ./gitlab-mr-jira-issue-trigger --path <CONFIG_YAML_FILE_PATH(Default is `config.yml`)>
 ```
 
-- Docker（推荐）
-
-```shell
-docker pull kingcos/gitlab-mr-jira-issue-trigger:0.1.0
-
-docker run -it --rm --name gitlab-mr-jira-issue-trigger \
-    kingcos/gitlab-mr-jira-issue-trigger:0.1.0 \
-    gitlab-mr-jira-issue-trigger --path <CONFIG_YAML_FILE_PATH(Default is `config.yml`)>
-```
-
 ### 设置 GitLab Webhook
 
 - 在 GitLab - Settings - Integrations 页面添加服务器 IP 以及在配置文件中设置的端口和路径：

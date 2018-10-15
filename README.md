@@ -24,16 +24,6 @@ go build gitlab-mr-jira-issue-trigger
 ./gitlab-mr-jira-issue-trigger --path <CONFIG_YAML_FILE_PATH(Default is `config.yml`)>
 ```
 
-- Docker(Recommended)
-
-```shell
-docker pull kingcos/gitlab-mr-jira-issue-trigger:0.1.0
-
-docker run -it --rm --name gitlab-mr-jira-issue-trigger \
-    kingcos/gitlab-mr-jira-issue-trigger:0.1.0 \
-    gitlab-mr-jira-issue-trigger --path <CONFIG_YAML_FILE_PATH(Default is `config.yml`)>
-```
-
 ### GitLab Webhook Settings
 
 - Add server IP with port & path which you setup in config.yml in the GitLab - Settings - Integrations page:

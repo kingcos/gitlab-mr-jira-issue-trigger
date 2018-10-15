@@ -1,5 +1,16 @@
-FROM golang:1.6.2-onbuild
-MAINTAINER kingcos
+FROM golang:1.11.1
+MAINTAINER github.com/kingcos <2821836721v@gmail.com>
 
-RUN ln -s /go/bin/app /go/bin/gitlab-ci-mr-jira-issue-trigger
-EXPOSE 8989
+RUN mkdir -p /go/src/app
+WORKDIR /go/src/app
+
+COPY . /go/src/app
+
+RUN go get -v -d
+RUN go install -v
+
+RUN go build gitlab-mr-jira-issue-trigger.go
+
+RUN ln -s /go/src/app/gitlab-mr-jira-issue-trigger /go/bin/gitlab-mr-jira-issue-trigger
+
+EXPOSE 9090
