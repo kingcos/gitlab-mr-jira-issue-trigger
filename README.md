@@ -20,7 +20,7 @@ This is a webhook for connection of GitLab and Jira.
 git clone https://github.com/kingcos/gitlab-mr-jira-issue-trigger.git
 cd gitlab-mr-jira-issue-trigger
 
-go build gitlab-mr-jira-issue-trigger
+go build gitlab-mr-jira-issue-trigger.go
 ./gitlab-mr-jira-issue-trigger --path <CONFIG_YAML_FILE_PATH(Default is `config.yml`)>
 ```
 
