@@ -1,5 +1,7 @@
 # gitlab-mr-jira-issue-trigger
 
+[![GitHub license](https://img.shields.io/github/license/kingcos/gitlab-mr-jira-issue-trigger.svg?style=for-the-badge)](https://github.com/kingcos/gitlab-mr-jira-issue-trigger/blob/master/LICENSE) [![Go 1.11.1](https://img.shields.io/badge/go-1.11.1-cyan.svg?style=for-the-badge)](https://github.com/golang/go/releases/tag/go1.11.1) [![Twitter @mmdadao](https://img.shields.io/badge/twitter-@mmdadao-blue.svg?style=for-the-badge)](https://twitter.com/mmdadao)
+
 [English](README.md) | 中文
 
 GitLab 代码合并请求（Merge Request）触发 Jira 问题流程更新的 Webhook。
