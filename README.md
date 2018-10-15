@@ -1,4 +1,4 @@
-# gitlab-ci-mr-jira-issue-trigger
+# gitlab-mr-jira-issue-trigger
 
 English | [中文](README_CN.md)
 
@@ -15,10 +15,10 @@ This is a webhook for connection of GitLab and Jira.
 - Setup the server:
 
 ```shell
-git clone https://github.com/kingcos/gitlab-ci-mr-jira-issue-trigger.git
-cd gitlab-ci-mr-jira-issue-trigger
-go build gitlab-ci-mr-jira-issue-trigger
-./gitlab-ci-mr-jira-issue-trigger --path <CONFIG_YAML_FILE_PATH(Default is `config.yml`)>
+git clone https://github.com/kingcos/gitlab-mr-jira-issue-trigger.git
+cd gitlab-mr-jira-issue-trigger
+go build gitlab-mr-jira-issue-trigger
+./gitlab-mr-jira-issue-trigger --path <CONFIG_YAML_FILE_PATH(Default is `config.yml`)>
 ```
 
 - Add server IP with port & path which you setup in config.yml in the GitLab - Settings - Integrations page:
@@ -32,11 +32,11 @@ go build gitlab-ci-mr-jira-issue-trigger
 ### Docker
 
 ```sh
-docker pull kingcos/gitlab-ci-mr-jira-issue-trigger:0.1.0
+docker pull kingcos/gitlab-mr-jira-issue-trigger:0.1.0
 
-docker run -it --rm --name gitlab-ci-mr-jira-issue-trigger \
-  kingcos/gitlab-ci-mr-jira-issue-trigger:0.1.0 \
-  gitlab-ci-build-on-merge-request --path <CONFIG_YAML_FILE_PATH(Default is `config.yml`)>
+docker run -it --rm --name gitlab-mr-jira-issue-trigger \
+  kingcos/gitlab-mr-jira-issue-trigger:0.1.0 \
+  gitlab-mr-jira-issue-trigger --path <CONFIG_YAML_FILE_PATH(Default is `config.yml`)>
 ```
 
 ## Config
