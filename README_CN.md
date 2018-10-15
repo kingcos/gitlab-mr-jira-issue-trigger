@@ -1,4 +1,4 @@
-# gitlab-ci-mr-jira-issue-trigger
+# gitlab-mr-jira-issue-trigger
 
 [English](README.md) | 中文
 
@@ -12,14 +12,28 @@ GitLab 代码合并请求（Merge Request）触发 Jira 问题流程更新的 We
 
 ## 运行
 
-- 设置 Go 服务端：
+### 设置 Go 服务端
+
+- 编译运行
 
 ```shell
-git clone https://github.com/kingcos/gitlab-ci-mr-jira-issue-trigger.git
-cd gitlab-ci-mr-jira-issue-trigger
-go build gitlab-ci-mr-jira-issue-trigger
-./gitlab-ci-mr-jira-issue-trigger --path <CONFIG_YAML_FILE_PATH(Default is `config.yml`)>
+git clone https://github.com/kingcos/gitlab-mr-jira-issue-trigger.git
+cd gitlab-mr-jira-issue-trigger
+go build gitlab-mr-jira-issue-trigger
+./gitlab-mr-jira-issue-trigger --path <CONFIG_YAML_FILE_PATH(Default is `config.yml`)>
 ```
+
+- Docker（推荐）
+
+```shell
+docker pull kingcos/gitlab-mr-jira-issue-trigger:0.1.0
+
+docker run -it --rm --name gitlab-mr-jira-issue-trigger \
+  kingcos/gitlab-mr-jira-issue-trigger:0.1.0 \
+  gitlab-mr-jira-issue-trigger --path <CONFIG_YAML_FILE_PATH(Default is `config.yml`)>
+```
+
+### 设置 GitLab Webhook
 
 - 在 GitLab - Settings - Integrations 页面添加服务器 IP 以及在配置文件中设置的端口和路径：
 
@@ -27,7 +41,6 @@ go build gitlab-ci-mr-jira-issue-trigger
 
 - 点击 'Add webhook' 按钮
 - 可以选择 'Merge requests events' 简单测试 Webhook 服务的可用性
-- 尽情享用吧！
 
 ## 配置
 
