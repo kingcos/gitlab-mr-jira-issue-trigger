@@ -24,6 +24,20 @@ go build gitlab-mr-jira-issue-trigger.go
 ./gitlab-mr-jira-issue-trigger --path <CONFIG_YAML_FILE_PATH(Default is `config.yml`)>
 ```
 
+- or Docker
+
+1. `git clone https://github.com/kingcos/gitlab-mr-jira-issue-trigger.git`
+2. Add your `config.yml` in `gitlab-mr-jira-issue-trigger` folder
+3. Update `EXPOSE` settings in the `Dockerfile` (Same as Server - Port in `config.yml`)
+
+```shell
+docker build -t kingcos/gitlab-mr-jira-issue-trigger .
+
+docker run -it --rm --name gitlab-mr-jira-issue-trigger \
+    kingcos/gitlab-mr-jira-issue-trigger:latest \
+    gitlab-mr-jira-issue-trigger
+```
+
 ### GitLab Webhook Settings
 
 - Add server IP with port & path which you setup in config.yml in the GitLab - Settings - Integrations page:
