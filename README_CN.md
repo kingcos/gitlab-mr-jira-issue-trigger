@@ -20,7 +20,7 @@ GitLab 代码合并请求（Merge Request）触发 Jira 问题流程更新的 We
 git clone https://github.com/kingcos/gitlab-mr-jira-issue-trigger.git
 cd gitlab-mr-jira-issue-trigger
 
-go build gitlab-mr-jira-issue-trigger
+go build gitlab-mr-jira-issue-trigger.go
 ./gitlab-mr-jira-issue-trigger --path <CONFIG_YAML_FILE_PATH(Default is `config.yml`)>
 ```
 
