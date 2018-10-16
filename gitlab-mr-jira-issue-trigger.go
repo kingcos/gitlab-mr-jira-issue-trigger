@@ -87,6 +87,8 @@ type WebHookRequestBody struct {
 		Description     string `json:"description"`
 		Date            string `json:"created_at"`
 		TargetProjectID int    `json:"target_project_id"`
+		WorkInProgress  bool   `json:"work_in_progress"`
+		Action          string `json:"action"`
 		Target          struct {
 			WebURL string `json:"web_url"`
 		}
@@ -324,12 +326,17 @@ func main() {
 
 	// Start HTTP server to listen GitLab merge request events
 	http.HandleFunc(config.Server.Path, func(writer http.ResponseWriter, request *http.Request) {
-		fmt.Println("--- New Request Handling ---")
+		fmt.Println("--- New request is handling ---")
 		// Serialize webhook request body
 		var requestBody = &WebHookRequestBody{}
 		if err := json.NewDecoder(request.Body).Decode(requestBody); err != nil {
-			log.Printf("Warning: [%v]", err.Error())
+			log.Printf("gitlab-mr-jira-issue-trigger WARNING: [%v]", err.Error())
 			http.Error(writer, err.Error(), http.StatusBadRequest)
+		}
+
+		// Ignore WIP status
+		if requestBody.ObjectAttributes.WorkInProgress {
+			return
 		}
 
 		// Only deal with merge request events
@@ -339,26 +346,39 @@ func main() {
 
 		// Map GitLab merge request state to Jira
 		state := GitLabState{}
+		shouldAddJiraComment := false
 		switch requestBody.ObjectAttributes.State {
 		case "merged":
+			if requestBody.ObjectAttributes.Action == "merge" {
+				shouldAddJiraComment = true
+			}
 			state.title = config.Trigger.Merged.Title
 			state.message = config.Trigger.Merged.Message
 			state.url = config.Trigger.Merged.URL
 			state.date = config.Trigger.Merged.Date
 			state.username = config.Trigger.Merged.Username
 		case "opened":
+			if requestBody.ObjectAttributes.Action == "open" || requestBody.ObjectAttributes.Action != "reopen" {
+				shouldAddJiraComment = true
+			}
 			state.title = config.Trigger.Opened.Title
 			state.message = config.Trigger.Opened.Message
 			state.url = config.Trigger.Opened.URL
 			state.date = config.Trigger.Opened.Date
 			state.username = config.Trigger.Opened.Username
 		case "closed":
+			if requestBody.ObjectAttributes.Action == "close" {
+				shouldAddJiraComment = true
+			}
 			state.title = config.Trigger.Closed.Title
 			state.message = config.Trigger.Closed.Message
 			state.url = config.Trigger.Closed.URL
 			state.date = config.Trigger.Closed.Date
 			state.username = config.Trigger.Closed.Username
 		case "locked":
+			if requestBody.ObjectAttributes.Action == "lock" {
+				shouldAddJiraComment = true
+			}
 			state.title = config.Trigger.Locked.Title
 			state.message = config.Trigger.Locked.Message
 			state.url = config.Trigger.Locked.URL
@@ -392,7 +412,7 @@ func main() {
 		issueIDs := regex.FindAllString(mergeRequestTitle, -1)
 
 		if len(issueIDs) == 0 {
-			notes := "gitlab-ci-mr-jira-issue-trigger ERROR: Couldn't find these IDs in Jira. Please check it again!"
+			notes := "gitlab-mr-jira-issue-trigger ERROR: Couldn't find these IDs in Jira. Please check it again!"
 			addGitLabComment(config.GitLab.Host, fmt.Sprint(requestBody.ObjectAttributes.TargetProjectID), fmt.Sprint(requestBody.ObjectAttributes.IID), notes, config.GitLab.Token)
 		}
 
@@ -402,18 +422,20 @@ func main() {
 		for _, issueID := range issueIDs {
 			// Find Jira transition ID
 			id, _ := findJiraTransitionIDByTitle(host, issueID, state.title, token)
-			// Add Jira comment
-			addJiraComment(host, issueID, comment, token)
+			if shouldAddJiraComment {
+				// Add Jira comment
+				addJiraComment(host, issueID, comment, token)
+			}
 
 			// Update Jira transition
 			if err := updateJiraTransition(host, issueID, id, token); err != nil {
 				// Add GitLab comment if error occurs
-				notes := fmt.Sprintf("gitlab-ci-mr-jira-issue-trigger ERROR: [%v]", err) + "\n"
+				notes := fmt.Sprintf("gitlab-mr-jira-issue-trigger ERROR: [%v]", err) + "\n"
 				addGitLabComment(config.GitLab.Host, fmt.Sprint(requestBody.ObjectAttributes.TargetProjectID), fmt.Sprint(requestBody.ObjectAttributes.IID), notes, config.GitLab.Token)
 			}
 		}
 	})
 
-	fmt.Println("--- gitlab-ci-mr-jira-issue-trigger is running ---")
+	fmt.Println("--- gitlab-mr-jira-issue-trigger is running ---")
 	http.ListenAndServe(":"+config.Server.Port, nil)
 }
