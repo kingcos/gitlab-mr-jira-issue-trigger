@@ -224,9 +224,12 @@ func addJiraComment(host string, issueID string, comment string, token string) e
 	defer response.Body.Close()
 
 	// Print info when success or failure
-	if response.StatusCode == 201 {
+	switch response.StatusCode {
+	case 201:
 		fmt.Println(issueID + ": Jira comment added successfully.")
-	} else {
+	case 404:
+		return errors.New(issueID + " not found")
+	default:
 		body, _ := ioutil.ReadAll(response.Body)
 		return errors.New(string(body))
 	}
@@ -420,17 +423,24 @@ func main() {
 
 		for _, issueID := range issueIDs {
 			// Find Jira transition ID
-			id, _ := findJiraTransitionIDByTitle(host, issueID, state.title, token)
-			if shouldAddJiraComment {
-				// Add Jira comment
-				addJiraComment(host, issueID, comment, token)
-			}
+			transitionID, err := findJiraTransitionIDByTitle(host, issueID, state.title, token)
 
-			// Update Jira transition
-			if err := updateJiraTransition(host, issueID, id, token); err != nil {
+			if err != nil {
 				// Add GitLab comment if error occurs
 				notes := fmt.Sprintf("gitlab-mr-jira-issue-trigger ERROR: [%v]", err.Error()) + "\n"
 				addGitLabComment(config.GitLab.Host, fmt.Sprint(requestBody.ObjectAttributes.TargetProjectID), fmt.Sprint(requestBody.ObjectAttributes.IID), notes, config.GitLab.Token)
+			} else {
+				if shouldAddJiraComment {
+					// Add Jira comment
+					addJiraComment(host, issueID, comment, token)
+				}
+
+				// Update Jira transition
+				if err := updateJiraTransition(host, issueID, transitionID, token); err != nil {
+					// Add GitLab comment if error occurs
+					notes := fmt.Sprintf("gitlab-mr-jira-issue-trigger ERROR: [%v]", err.Error()) + "\n"
+					addGitLabComment(config.GitLab.Host, fmt.Sprint(requestBody.ObjectAttributes.TargetProjectID), fmt.Sprint(requestBody.ObjectAttributes.IID), notes, config.GitLab.Token)
+				}
 			}
 		}
 	})
