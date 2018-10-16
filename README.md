@@ -4,7 +4,7 @@
 
 English | [中文](README_CN.md)
 
-A GitLab merge request webhook to trigger Jira issue transition.
+A GitLab webhook to trigger Jira issue transition when merge request events occurred.
 
 ## What
 
