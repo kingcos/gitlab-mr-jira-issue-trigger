@@ -224,12 +224,9 @@ func addJiraComment(host string, issueID string, comment string, token string) e
 	defer response.Body.Close()
 
 	// Print info when success or failure
-	switch response.StatusCode {
-	case 201:
+	if response.StatusCode == 201 {
 		fmt.Println(issueID + ": Jira comment added successfully.")
-	case 404:
-		return errors.New(issueID + " not found")
-	default:
+	} else {
 		body, _ := ioutil.ReadAll(response.Body)
 		return errors.New(string(body))
 	}
@@ -264,7 +261,8 @@ func findJiraTransitionIDByTitle(host string, issueID string, title string, toke
 	defer response.Body.Close()
 
 	// Print info when success or failure
-	if response.StatusCode == 200 {
+	switch response.StatusCode {
+	case 200:
 		body, _ := ioutil.ReadAll(response.Body)
 		var model JiraTransitionsModel
 
@@ -278,8 +276,9 @@ func findJiraTransitionIDByTitle(host string, issueID string, title string, toke
 				return id, nil
 			}
 		}
-
-	} else {
+	case 404:
+		return 0, errors.New(issueID + " not found")
+	default:
 		body, _ := ioutil.ReadAll(response.Body)
 		return 0, errors.New(string(body))
 	}
