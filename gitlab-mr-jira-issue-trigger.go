@@ -358,7 +358,7 @@ func main() {
 			state.date = config.Trigger.Merged.Date
 			state.username = config.Trigger.Merged.Username
 		case "opened":
-			if requestBody.ObjectAttributes.Action == "open" || requestBody.ObjectAttributes.Action != "reopen" {
+			if requestBody.ObjectAttributes.Action == "open" || requestBody.ObjectAttributes.Action == "reopen" {
 				shouldAddJiraComment = true
 			}
 			state.title = config.Trigger.Opened.Title
@@ -388,6 +388,12 @@ func main() {
 			printErrorThenExit(errors.New(requestBody.ObjectAttributes.State), "Not support state error")
 		}
 
+		// Check state
+		if state.title == "" && state.message == "" && !state.url && !state.date && !state.username {
+			fmt.Println("--- Skip", requestBody.ObjectAttributes.State, "state ---")
+			return
+		}
+
 		// Parse struct to JSON
 		comment := state.message
 
@@ -404,17 +410,10 @@ func main() {
 			comment = comment + "\nBy: " + requestBody.User.Name
 		}
 
-		fmt.Println(comment)
-
 		// Match Jira issue IDs
 		mergeRequestTitle := requestBody.ObjectAttributes.Title
 		regex, _ := regexp.Compile(config.Trigger.Regex)
 		issueIDs := regex.FindAllString(mergeRequestTitle, -1)
-
-		if len(issueIDs) == 0 {
-			notes := "gitlab-mr-jira-issue-trigger ERROR: Couldn't find these IDs in Jira. Please check it again!"
-			addGitLabComment(config.GitLab.Host, fmt.Sprint(requestBody.ObjectAttributes.TargetProjectID), fmt.Sprint(requestBody.ObjectAttributes.IID), notes, config.GitLab.Token)
-		}
 
 		host := config.Jira.Host
 		token := generateJiraToken(config.Jira.Username, config.Jira.Password)
@@ -430,7 +429,7 @@ func main() {
 			// Update Jira transition
 			if err := updateJiraTransition(host, issueID, id, token); err != nil {
 				// Add GitLab comment if error occurs
-				notes := fmt.Sprintf("gitlab-mr-jira-issue-trigger ERROR: [%v]", err) + "\n"
+				notes := fmt.Sprintf("gitlab-mr-jira-issue-trigger ERROR: [%v]", err.Error()) + "\n"
 				addGitLabComment(config.GitLab.Host, fmt.Sprint(requestBody.ObjectAttributes.TargetProjectID), fmt.Sprint(requestBody.ObjectAttributes.IID), notes, config.GitLab.Token)
 			}
 		}
