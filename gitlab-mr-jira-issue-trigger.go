@@ -8,7 +8,6 @@ import (
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"net/http"
 	"net/url"
 	"os"
@@ -19,8 +18,38 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// Config struct for the YAML file
-type Config struct {
+// WebHookRequestBody struct for GitLab webhook response of merge request events
+type WebHookRequestBody struct {
+	ObjectKind string `json:"object_kind"`
+	User       struct {
+		Name string `json:"name"`
+	} `json:"user"`
+	ObjectAttributes struct {
+		IID             int    `json:"iid"`
+		Title           string `json:"title"`
+		State           string `json:"state"`
+		Description     string `json:"description"`
+		Date            string `json:"created_at"`
+		TargetProjectID int    `json:"target_project_id"`
+		WorkInProgress  bool   `json:"work_in_progress"`
+		Action          string `json:"action"`
+		Target          struct {
+			WebURL string `json:"web_url"`
+		}
+	} `json:"object_attributes"`
+}
+
+// GitLabState struct
+type GitLabState struct {
+	title    string
+	message  string
+	url      bool
+	date     bool
+	username bool
+}
+
+// TriggerConfig struct for YAML file
+type TriggerConfig struct {
 	GitLab struct {
 		Host  string `yaml:"host"`
 		Token string `yaml:"token"`
@@ -74,51 +103,8 @@ type Config struct {
 	} `yaml:"Trigger"`
 }
 
-// WebHookRequestBody struct for GitLab webhook response of merge request events
-type WebHookRequestBody struct {
-	ObjectKind string `json:"object_kind"`
-	User       struct {
-		Name string `json:"name"`
-	} `json:"user"`
-	ObjectAttributes struct {
-		IID             int    `json:"iid"`
-		Title           string `json:"title"`
-		State           string `json:"state"`
-		Description     string `json:"description"`
-		Date            string `json:"created_at"`
-		TargetProjectID int    `json:"target_project_id"`
-		WorkInProgress  bool   `json:"work_in_progress"`
-		Action          string `json:"action"`
-		Target          struct {
-			WebURL string `json:"web_url"`
-		}
-	} `json:"object_attributes"`
-}
-
-// GitLabState struct
-type GitLabState struct {
-	title    string
-	message  string
-	url      bool
-	date     bool
-	username bool
-	labels   []string
-}
-
-// Print error message, then exit program
-func printErrorThenExit(err error, message string) {
-	if err != nil {
-		if message != "" {
-			fmt.Fprintf(os.Stderr, fmt.Sprintf(message+": [%v]", err)+"\n")
-		}
-
-		flag.Usage()
-		os.Exit(1)
-	}
-}
-
 // Read config YAML file, then return Config
-func (config *Config) read(file string) *Config {
+func (config *TriggerConfig) read(file string) *TriggerConfig {
 	yamlFile, err := ioutil.ReadFile(file)
 	printErrorThenExit(err, "Read YAML file error")
 
@@ -129,7 +115,7 @@ func (config *Config) read(file string) *Config {
 }
 
 // Validate YAML file configs
-func (config *Config) validate() {
+func (config *TriggerConfig) validate() {
 	var err error
 	switch {
 	case config.GitLab.Host == "":
@@ -153,15 +139,34 @@ func (config *Config) validate() {
 	}
 }
 
+// Print error message, then exit program
+func printErrorThenExit(err error, message string) {
+	if err != nil {
+		if message != "" {
+			fmt.Fprintf(os.Stderr, fmt.Sprintf(message+": [%v]", err)+"\n")
+		}
+
+		flag.Usage()
+		os.Exit(1)
+	}
+}
+
+// JiraUtility struct for Jira uitility properties & funcs
+type JiraUtility struct {
+	host     string
+	username string
+	password string
+}
+
 // Generate Jira token with username & password by HTTP basic authentication
-func generateJiraToken(username string, password string) string {
-	info := username + ":" + password
+func (utility *JiraUtility) generateJiraToken() string {
+	info := utility.username + ":" + utility.password
 	encodedInfo := base64.StdEncoding.EncodeToString([]byte(info))
 	return "Basic " + encodedInfo
 }
 
-// Update Jira issue's transition with host, token, issue ID & transition ID
-func updateJiraTransition(host string, issueID string, transitionID int, token string) error {
+// Update Jira issue's transition with issue ID & transition ID
+func (utility *JiraUtility) updateTransition(issueID string, transitionID int) error {
 	// JiraTransitionModel struct for Jira transition
 	type JiraTransitionModel struct {
 		Transition struct {
@@ -173,10 +178,10 @@ func updateJiraTransition(host string, issueID string, transitionID int, token s
 	model.Transition.ID = transitionID
 	requestJSON, _ := json.Marshal(model)
 
-	apiURL := host + "/rest/api/2/issue/" + issueID + "/transitions"
+	apiURL := utility.host + "/rest/api/2/issue/" + issueID + "/transitions"
 
 	request, _ := http.NewRequest("POST", apiURL, bytes.NewBuffer(requestJSON))
-	request.Header.Set("Authorization", token)
+	request.Header.Set("Authorization", utility.generateJiraToken())
 	request.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
@@ -188,18 +193,22 @@ func updateJiraTransition(host string, issueID string, transitionID int, token s
 	defer response.Body.Close()
 
 	// Print info when success or failure
-	if response.StatusCode == 204 {
-		fmt.Println(issueID + ": Jira transition updated successfully.")
-	} else {
+	switch response.StatusCode {
+	case 204:
+		fmt.Println("The issue " + issueID + " transition updated successfully")
+		return nil
+	case 400:
+		return errors.New("There is no transition specified")
+	case 404:
+		return errors.New("The issue " + issueID + " does not exist or the user does not have permission to view it")
+	default:
 		body, _ := ioutil.ReadAll(response.Body)
-		return errors.New(string(body))
+		return errors.New("Unknown: " + string(body))
 	}
-
-	return nil
 }
 
-// Add Jira issue's comment with host, token, issue ID & comment
-func addJiraComment(host string, issueID string, comment string, token string) error {
+// Add Jira issue's comment with issue ID & comment
+func (utility *JiraUtility) addComment(issueID string, comment string) error {
 	// JiraCommentModel struct for Jira comment
 	type JiraCommentModel struct {
 		Body string `json:"body"`
@@ -209,10 +218,10 @@ func addJiraComment(host string, issueID string, comment string, token string) e
 	model.Body = comment
 	requestJSON, _ := json.Marshal(model)
 
-	apiURL := host + "/rest/api/2/issue/" + issueID + "/comment"
+	apiURL := utility.host + "/rest/api/2/issue/" + issueID + "/comment"
 
 	request, _ := http.NewRequest("POST", apiURL, bytes.NewBuffer(requestJSON))
-	request.Header.Set("Authorization", token)
+	request.Header.Set("Authorization", utility.generateJiraToken())
 	request.Header.Set("Content-Type", "application/json")
 
 	client := &http.Client{}
@@ -224,18 +233,18 @@ func addJiraComment(host string, issueID string, comment string, token string) e
 	defer response.Body.Close()
 
 	// Print info when success or failure
-	if response.StatusCode == 201 {
-		fmt.Println(issueID + ": Jira comment added successfully.")
-	} else {
+	switch response.StatusCode {
+	case 201:
+		fmt.Println("The issue " + issueID + " added comment successfully")
+		return nil
+	default:
 		body, _ := ioutil.ReadAll(response.Body)
-		return errors.New(string(body))
+		return errors.New("Unknown: " + string(body))
 	}
-
-	return nil
 }
 
 // Find Jira transition ID by transition title in the page
-func findJiraTransitionIDByTitle(host string, issueID string, title string, token string) (int, error) {
+func (utility *JiraUtility) findTransitionIDByTitle(issueID string, title string) (int, error) {
 	// JiraTransitionModel struct for Jira transition
 	type JiraTransitionModel struct {
 		ID   string `json:"id"`
@@ -247,10 +256,10 @@ func findJiraTransitionIDByTitle(host string, issueID string, title string, toke
 		Transitions []JiraTransitionModel `json:"transitions"`
 	}
 
-	apiURL := host + "/rest/api/2/issue/" + issueID + "/transitions"
+	apiURL := utility.host + "/rest/api/2/issue/" + issueID + "/transitions"
 
 	request, _ := http.NewRequest("GET", apiURL, nil)
-	request.Header.Set("Authorization", token)
+	request.Header.Set("Authorization", utility.generateJiraToken())
 
 	client := &http.Client{}
 	response, err := client.Do(request)
@@ -270,29 +279,35 @@ func findJiraTransitionIDByTitle(host string, issueID string, title string, toke
 
 		for _, transition := range model.Transitions {
 			if transition.Name == title {
-				fmt.Println(issueID + ": Find Jira transition ID successfully: " + transition.ID)
+				fmt.Println("The issue " + issueID + " find transition name " + title + " with ID " + transition.ID + " successfully")
 				id, _ := strconv.Atoi(transition.ID)
 
 				return id, nil
 			}
 		}
+
+		return 0, errors.New("The issue" + issueID + "with transition name" + title + "not found")
 	case 404:
-		return 0, errors.New(issueID + " not found")
+		return 0, errors.New("The issue" + issueID + "is not found or the user does not have permission to view it")
 	default:
 		body, _ := ioutil.ReadAll(response.Body)
-		return 0, errors.New(string(body))
+		return 0, errors.New("Unknown: " + string(body))
 	}
+}
 
-	return 0, nil
+// GitLabUtility struct for GitLab uitility properties & funcs
+type GitLabUtility struct {
+	host  string
+	token string
 }
 
 // Add GitLab comment
-func addGitLabComment(host string, projectID string, mergeRequestID string, comment string, token string) (int, error) {
-	apiURL := host + "/api/v4/projects/" + projectID + "/merge_requests/" + mergeRequestID + "/notes"
+func (utility *GitLabUtility) addComment(projectID string, mergeRequestID string, comment string) (int, error) {
+	apiURL := utility.host + "/api/v4/projects/" + projectID + "/merge_requests/" + mergeRequestID + "/notes"
 	form := url.Values{}
 	form.Add("body", comment)
 	request, _ := http.NewRequest("POST", apiURL, strings.NewReader(form.Encode()))
-	request.Header.Set("Private-Token", token)
+	request.Header.Set("Private-Token", utility.token)
 
 	client := &http.Client{}
 	response, err := client.Do(request)
@@ -303,14 +318,18 @@ func addGitLabComment(host string, projectID string, mergeRequestID string, comm
 	defer response.Body.Close()
 
 	// Print info when success or failure
-	if response.StatusCode == 201 {
-		fmt.Println(projectID + " " + mergeRequestID + ": GitLab comment added successfully.")
-	} else {
+	switch response.StatusCode {
+	case 201:
+		fmt.Println("The GitLab project " + projectID + "with merge request " + mergeRequestID + " added comment successfully")
+		return 0, nil
+	default:
 		body, _ := ioutil.ReadAll(response.Body)
-		return 0, errors.New(string(body))
+		return 0, errors.New("Unknown: " + string(body))
 	}
+}
 
-	return 0, nil
+func (utility *GitLabUtility) constructError(err error) string {
+	return fmt.Sprintf("❌ [gitlab-mr-jira-issue-trigger](https://github.com/kingcos/gitlab-mr-jira-issue-trigger) ❌<br>%v", err.Error())
 }
 
 func main() {
@@ -318,21 +337,32 @@ func main() {
 	var configFilePath = flag.String("path", "config.yml", "Path (default config.yml)")
 	flag.Parse()
 	if *configFilePath == "" {
-		printErrorThenExit(errors.New("Path is required"), "Nil argument error")
+		printErrorThenExit(errors.New("path is required"), "Nil argument error")
 	}
 
 	// Read & validate config.yml
-	var config Config
+	var config TriggerConfig
 	config.read(*configFilePath)
 	config.validate()
 
+	// Construct models from config
+	jira := JiraUtility{}
+	jira.host = config.Jira.Host
+	jira.username = config.Jira.Username
+	jira.password = config.Jira.Password
+
+	gitLab := GitLabUtility{}
+	gitLab.host = config.GitLab.Host
+	gitLab.token = config.GitLab.Token
+
 	// Start HTTP server to listen GitLab merge request events
 	http.HandleFunc(config.Server.Path, func(writer http.ResponseWriter, request *http.Request) {
-		fmt.Println("--- New request is handling ---")
+		fmt.Println("---🛠 New request is handling 🛠---")
+
 		// Serialize webhook request body
 		var requestBody = &WebHookRequestBody{}
 		if err := json.NewDecoder(request.Body).Decode(requestBody); err != nil {
-			log.Printf("gitlab-mr-jira-issue-trigger WARNING: [%v]", err.Error())
+			fmt.Printf("⚠️ gitlab-mr-jira-issue-trigger ⚠️\n%v", err.Error())
 			http.Error(writer, err.Error(), http.StatusBadRequest)
 		}
 
@@ -392,7 +422,7 @@ func main() {
 
 		// Check state
 		if state.title == "" && state.message == "" && !state.url && !state.date && !state.username {
-			fmt.Println("--- Skip", requestBody.ObjectAttributes.State, "state ---")
+			fmt.Println("---⏭ Skip \"" + requestBody.ObjectAttributes.State + "\" state ⏭---")
 			return
 		}
 
@@ -417,33 +447,31 @@ func main() {
 		regex, _ := regexp.Compile(config.Trigger.Regex)
 		issueIDs := regex.FindAllString(mergeRequestTitle, -1)
 
-		host := config.Jira.Host
-		token := generateJiraToken(config.Jira.Username, config.Jira.Password)
-
 		for _, issueID := range issueIDs {
 			// Find Jira transition ID
-			transitionID, err := findJiraTransitionIDByTitle(host, issueID, state.title, token)
+			transitionID, err := jira.findTransitionIDByTitle(issueID, state.title)
 
 			if err != nil {
 				// Add GitLab comment if error occurs
-				notes := fmt.Sprintf("gitlab-mr-jira-issue-trigger ERROR: [%v]", err.Error()) + "\n"
-				addGitLabComment(config.GitLab.Host, fmt.Sprint(requestBody.ObjectAttributes.TargetProjectID), fmt.Sprint(requestBody.ObjectAttributes.IID), notes, config.GitLab.Token)
+				notes := gitLab.constructError(err)
+				gitLab.addComment(fmt.Sprint(requestBody.ObjectAttributes.TargetProjectID), fmt.Sprint(requestBody.ObjectAttributes.IID), notes)
 			} else {
 				if shouldAddJiraComment {
 					// Add Jira comment
-					addJiraComment(host, issueID, comment, token)
+					jira.addComment(issueID, comment)
 				}
 
 				// Update Jira transition
-				if err := updateJiraTransition(host, issueID, transitionID, token); err != nil {
+				if err := jira.updateTransition(issueID, transitionID); err != nil {
 					// Add GitLab comment if error occurs
-					notes := fmt.Sprintf("gitlab-mr-jira-issue-trigger ERROR: [%v]", err.Error()) + "\n"
-					addGitLabComment(config.GitLab.Host, fmt.Sprint(requestBody.ObjectAttributes.TargetProjectID), fmt.Sprint(requestBody.ObjectAttributes.IID), notes, config.GitLab.Token)
+					notes := gitLab.constructError(err)
+					gitLab.addComment(fmt.Sprint(requestBody.ObjectAttributes.TargetProjectID), fmt.Sprint(requestBody.ObjectAttributes.IID), notes)
 				}
 			}
 		}
 	})
 
-	fmt.Println("--- gitlab-mr-jira-issue-trigger is running ---")
+	fmt.Println("---👏 Welcome to use gitlab-mr-jira-issue-trigger by github.com/kingcos👏---")
+	fmt.Println("---🏁 gitlab-mr-jira-issue-trigger is launched 🏁---")
 	http.ListenAndServe(":"+config.Server.Port, nil)
 }
