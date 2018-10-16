@@ -449,24 +449,22 @@ func main() {
 
 		for _, issueID := range issueIDs {
 			// Find Jira transition ID
-			transitionID, err := jira.findTransitionIDByTitle(issueID, state.title)
-
-			if err != nil {
+			if transitionID, err := jira.findTransitionIDByTitle(issueID, state.title); err != nil {
 				// Add GitLab comment if error occurs
 				notes := gitLab.constructError(err)
 				gitLab.addComment(fmt.Sprint(requestBody.ObjectAttributes.TargetProjectID), fmt.Sprint(requestBody.ObjectAttributes.IID), notes)
+			} else {
+				// Update Jira transition
+				if err := jira.updateTransition(issueID, transitionID); err != nil {
+					// Add GitLab comment if error occurs
+					notes := gitLab.constructError(err)
+					gitLab.addComment(fmt.Sprint(requestBody.ObjectAttributes.TargetProjectID), fmt.Sprint(requestBody.ObjectAttributes.IID), notes)
+				}
 			}
 
 			if shouldAddJiraComment {
 				// Add Jira comment
 				jira.addComment(issueID, comment)
-			}
-
-			// Update Jira transition
-			if err := jira.updateTransition(issueID, transitionID); err != nil {
-				// Add GitLab comment if error occurs
-				notes := gitLab.constructError(err)
-				gitLab.addComment(fmt.Sprint(requestBody.ObjectAttributes.TargetProjectID), fmt.Sprint(requestBody.ObjectAttributes.IID), notes)
 			}
 		}
 	})
