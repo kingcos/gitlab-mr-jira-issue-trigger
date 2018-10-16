@@ -286,9 +286,9 @@ func (utility *JiraUtility) findTransitionIDByTitle(issueID string, title string
 			}
 		}
 
-		return 0, errors.New("The issue" + issueID + "with transition name" + title + "not found")
+		return 0, errors.New("The transition name \"" + title + "\" in issue " + issueID + " not found")
 	case 404:
-		return 0, errors.New("The issue" + issueID + "is not found or the user does not have permission to view it")
+		return 0, errors.New("The issue " + issueID + " is not found or the user does not have permission to view it")
 	default:
 		body, _ := ioutil.ReadAll(response.Body)
 		return 0, errors.New("Unknown: " + string(body))
@@ -455,18 +455,18 @@ func main() {
 				// Add GitLab comment if error occurs
 				notes := gitLab.constructError(err)
 				gitLab.addComment(fmt.Sprint(requestBody.ObjectAttributes.TargetProjectID), fmt.Sprint(requestBody.ObjectAttributes.IID), notes)
-			} else {
-				if shouldAddJiraComment {
-					// Add Jira comment
-					jira.addComment(issueID, comment)
-				}
+			}
 
-				// Update Jira transition
-				if err := jira.updateTransition(issueID, transitionID); err != nil {
-					// Add GitLab comment if error occurs
-					notes := gitLab.constructError(err)
-					gitLab.addComment(fmt.Sprint(requestBody.ObjectAttributes.TargetProjectID), fmt.Sprint(requestBody.ObjectAttributes.IID), notes)
-				}
+			if shouldAddJiraComment {
+				// Add Jira comment
+				jira.addComment(issueID, comment)
+			}
+
+			// Update Jira transition
+			if err := jira.updateTransition(issueID, transitionID); err != nil {
+				// Add GitLab comment if error occurs
+				notes := gitLab.constructError(err)
+				gitLab.addComment(fmt.Sprint(requestBody.ObjectAttributes.TargetProjectID), fmt.Sprint(requestBody.ObjectAttributes.IID), notes)
 			}
 		}
 	})
