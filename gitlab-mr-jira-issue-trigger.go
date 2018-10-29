@@ -29,7 +29,7 @@ type WebHookRequestBody struct {
 		Title           string `json:"title"`
 		State           string `json:"state"`
 		Description     string `json:"description"`
-		Date            string `json:"created_at"`
+		Date            string `json:"updated_at"`
 		TargetProjectID int    `json:"target_project_id"`
 		WorkInProgress  bool   `json:"work_in_progress"`
 		Action          string `json:"action"`
