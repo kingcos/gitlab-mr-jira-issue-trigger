@@ -67,7 +67,7 @@ type TriggerConfig struct {
 	} `yaml:"Server"`
 
 	Trigger struct {
-		Regex  string `yaml:"regex"`
+		Regex  []string `yaml:"regex"`
 		Merged struct {
 			Title    string `yaml:"title"`
 			Message  string `yaml:"message"`
@@ -443,9 +443,13 @@ func main() {
 		}
 
 		// Match Jira issue IDs
-		mergeRequestTitle := requestBody.ObjectAttributes.Title
-		regex, _ := regexp.Compile(config.Trigger.Regex)
-		issueIDs := regex.FindAllString(mergeRequestTitle, -1)
+		mergeRequestTitle := strings.ToUpper(requestBody.ObjectAttributes.Title)
+
+		var issueIDs []string
+		for _, regexConfig := range config.Trigger.Regex {
+			regex, _ := regexp.Compile(regexConfig)
+			issueIDs = append(issueIDs, regex.FindAllString(mergeRequestTitle, -1)...)
+		}
 
 		for _, issueID := range issueIDs {
 			// Find Jira transition ID
