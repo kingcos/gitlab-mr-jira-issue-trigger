@@ -336,9 +336,6 @@ func main() {
 	// Read config file path from command line
 	var configFilePath = flag.String("path", "config.yml", "Path (default config.yml)")
 	flag.Parse()
-	if *configFilePath == "" {
-		printErrorThenExit(errors.New("path is required"), "Nil argument error")
-	}
 
 	// Read & validate config.yml
 	var config TriggerConfig
