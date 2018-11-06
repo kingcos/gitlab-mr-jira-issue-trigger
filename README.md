@@ -49,7 +49,7 @@ docker run -it --rm --name gitlab-mr-jira-issue-trigger \
 - Click 'Add webhook' button
 - You can test it with 'Merge requests events'
 
-## Configuration
+## Configurations
 
 ```yml
 GitLab:
