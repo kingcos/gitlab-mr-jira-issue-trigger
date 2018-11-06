@@ -18,8 +18,8 @@ import (
 	"gopkg.in/yaml.v2"
 )
 
-// WebHookRequestBody struct for GitLab webhook response of merge request events
-type WebHookRequestBody struct {
+// GitLabWebHookRequestBody struct for GitLab webhook response of merge request events
+type GitLabWebHookRequestBody struct {
 	ObjectKind string `json:"object_kind"`
 	User       struct {
 		Name string `json:"name"`
@@ -360,7 +360,7 @@ func main() {
 		fmt.Println("---🛠 New request is handling 🛠---")
 
 		// Serialize webhook request body
-		var requestBody = &WebHookRequestBody{}
+		var requestBody = &GitLabWebHookRequestBody{}
 		if err := json.NewDecoder(request.Body).Decode(requestBody); err != nil {
 			fmt.Printf("⚠️ gitlab-mr-jira-issue-trigger ⚠️\n%v", err.Error())
 			http.Error(writer, err.Error(), http.StatusBadRequest)
