@@ -334,7 +334,7 @@ func (utility *GitLabUtility) constructError(err error) string {
 
 func main() {
 	// Read config file path from command line
-	var configFilePath = flag.String("path", "config.yml", "Path (default config.yml)")
+	var configFilePath = flag.String("path", "config.yml", "Setup your configuration file path.")
 	flag.Parse()
 
 	// Read & validate config.yml
