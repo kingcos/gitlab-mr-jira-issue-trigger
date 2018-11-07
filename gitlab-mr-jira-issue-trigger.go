@@ -214,8 +214,7 @@ func (utility *JiraUtility) addComment(issueID string, comment string) error {
 		Body string `json:"body"`
 	}
 
-	model := JiraCommentModel{}
-	model.Body = comment
+	model := JiraCommentModel{comment}
 	requestJSON, _ := json.Marshal(model)
 
 	apiURL := utility.host + "/rest/api/2/issue/" + issueID + "/comment"
