@@ -10,6 +10,8 @@ GitLab 代码合并请求（Merge Request）触发 Jira 问题流程更新的 We
 
 这是一个 GitLab webhook，连接 GitLab 与 Jira。
 
+![What](What.png)
+
 > 启发自 [shyiko/gitlab-ci-build-on-merge-request](https://github.com/shyiko/gitlab-ci-build-on-merge-request)。
 
 ## 运行

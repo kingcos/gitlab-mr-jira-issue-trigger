@@ -10,6 +10,8 @@ A GitLab webhook to trigger Jira issue transition when merge request events occu
 
 This is a webhook for connection of GitLab and Jira.
 
+![What](What.png)
+
 > Inspired by [shyiko/gitlab-ci-build-on-merge-request](https://github.com/shyiko/gitlab-ci-build-on-merge-request).
 
 ## How to run?
