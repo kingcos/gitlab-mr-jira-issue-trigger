@@ -37,7 +37,7 @@ go build gitlab-mr-jira-issue-trigger.go
 ```shell
 docker build -t kingcos/gitlab-mr-jira-issue-trigger .
 
-docker run -it --rm --name gitlab-mr-jira-issue-trigger \
+docker run -p 9000:<YOUR_DEFINED_PORT> -it --rm --name gitlab-mr-jira-issue-trigger \
     kingcos/gitlab-mr-jira-issue-trigger:latest \
     gitlab-mr-jira-issue-trigger
 ```
